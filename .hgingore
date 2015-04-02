@@ -1,2 +1,2 @@
-[glob]
+syntax: glob
 *.pyc
