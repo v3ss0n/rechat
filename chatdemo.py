@@ -1,7 +1,4 @@
 #!/usr/bin/env python
-#
-# Copyright 2009 Facebook
-#
 # Licensed under the Apache License, Version 2.0 (the "License"); you may
 # not use this file except in compliance with the License. You may obtain
 # a copy of the License at
@@ -29,8 +26,6 @@ define("port", default=8080, help="run on the given port", type=int)
 define("debug", default=False, help="run in debug mode")
 conn = r.connect("localhost")
 evt = r.db("rechat").table("events")
-# Making this a non-singleton is left as an exercise for the reader.
-
 
 class MainHandler(tornado.web.RequestHandler):
 
@@ -56,7 +51,7 @@ class MessageNewHandler(tornado.web.RequestHandler):
         }
         # to_basestring is necessary for Python 3's json encoder,
         # which doesn't accept byte strings.
-        messages = (yield evt.insert(message).run(con))
+        messages = (yield evt.insert(message, durability="soft").run(con))
         message['id'] = messages['generated_keys'][0]
         message["html"] = tornado.escape.to_basestring(
             self.render_string("message.html", message=message))
@@ -70,8 +65,6 @@ class MessageUpdatesHandler(tornado.web.RequestHandler):
 
     @gen.coroutine
     def post(self):
-        # Save the future returned by wait_for_messages so we can cancel
-        # it in wait_for_messages
         con = yield conn
         curs = yield evt.changes().run(con)
 
@@ -82,8 +75,6 @@ class MessageUpdatesHandler(tornado.web.RequestHandler):
             break
 
         self.finish(dict(messages=[message]))
-
-
 
 
 def main():
