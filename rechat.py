@@ -120,13 +120,14 @@ class MessageUpdatesHandler(BaseHandler):
 
 @gen.coroutine
 def main():
-    """ Async main method. It needed to be async due to r.connect is async  """
+    """ Async main method. It needed to be async due to r.connect is async . """
     parse_command_line()
     db_name = "rechat"
     setup_db(db_name)
     r.set_loop_type("tornado")
 
-    db = yield r.connect("localhost", db=db_name)
+    db = yield r.connect("localhost", db=db_name) 
+    #Single db connection for everything thanks a lot Ben and Jeese
     http_server = httpserver.HTTPServer(RechatApp(db))
     http_server.listen(options.port)
 
