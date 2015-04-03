@@ -13,7 +13,7 @@
 
 import logging
 import tornado.escape
-import tornado.ioloop
+from tornado.ioloop import IOLoop
 import tornado.web
 import os.path
 import rethinkdb as r
@@ -41,7 +41,7 @@ def setup_db(db_name="rechat", tables=['events']):
 
 class RechatApp(tornado.web.Application):
 
-    def __init__(self):
+    def __init__(self, db):
 
         handlers = [
             (r"/", MainHandler),
@@ -56,15 +56,15 @@ class RechatApp(tornado.web.Application):
                             os.path.dirname(__file__), "static"),
                         xsrf_cookies=True,
                         debug=options.debug)
-
+        self.db = db
+        logging.info(db)
         tornado.web.Application.__init__(self, handlers, **settings)
 
 
 class BaseHandler(tornado.web.RequestHandler):
 
-    @gen.coroutine
-    def prepare(self):
-        self.db = yield r.connect("localhost", db="rechat")
+    def initialize(self):
+        self.db = self.application.db
         self.evt = r.table("events")
 
 
@@ -118,15 +118,18 @@ class MessageUpdatesHandler(BaseHandler):
         self.finish(dict(messages=[message]))
 
 
+@gen.coroutine
 def main():
-
+    """ Async main method. It needed to be async due to r.connect is async  """
     parse_command_line()
-    setup_db()
+    db_name = "rechat"
+    setup_db(db_name)
     r.set_loop_type("tornado")
-    http_server = httpserver.HTTPServer(RechatApp())
-    http_server.listen(options.port)
-    tornado.ioloop.IOLoop.current().start()
 
+    db = yield r.connect("localhost", db=db_name)
+    http_server = httpserver.HTTPServer(RechatApp(db))
+    http_server.listen(options.port)
 
 if __name__ == "__main__":
-    main()
+    IOLoop.current().run_sync(main)
+    IOLoop.current().start()
