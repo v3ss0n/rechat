@@ -18,6 +18,7 @@ import tornado.web
 import os.path
 import rethinkdb as r
 from tornado import httpserver
+from time import time
 # from tornado.concurrent import Future
 from tornado import gen
 from tornado.options import define, options, parse_command_line
@@ -31,7 +32,7 @@ def setup_db(db_name="rechat", tables=['events']):
     try:
         r.db_create(db_name).run(connection)
         for tbl in tables:
-            r.db(db_name).table_create(tbl, durability="soft").run(connection)
+            r.db(db_name).table_create(tbl, durability="hard").run(connection)
         logging.info('Database setup completed.')
     except r.RqlRuntimeError:
         logging.warn('Database/Table already exists.')
@@ -90,7 +91,10 @@ class MessageNewHandler(BaseHandler):
         }
         # to_basestring is necessary for Python 3's json encoder,
         # which doesn't accept byte strings.
+        start = time()
         messages = (yield self.evt.insert(message).run(self.db))
+        time_taken = time() - start
+        logging.warn("DBINSERT: %s seconds" % time_taken)
         message['id'] = messages['generated_keys'][0]
         message["html"] = tornado.escape.to_basestring(
             self.render_string("message.html", message=message))
@@ -126,7 +130,7 @@ def main():
     setup_db(db_name)
     r.set_loop_type("tornado")
 
-    db = yield r.connect("localhost", db=db_name) 
+    db = yield r.connect("localhost", db=db_name)
     #Single db connection for everything thanks a lot Ben and Jeese
     http_server = httpserver.HTTPServer(RechatApp(db))
     http_server.listen(options.port)
