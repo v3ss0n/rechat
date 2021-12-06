@@ -5,7 +5,7 @@ Using Async RethinDB Driver , with change feeds and Longpolling.
 Change feeds makes 
 
 
-#How it works
+How it works
 - When new chat message arrived it is inserted into ```events``` table RethinkDB automatically notify to the changfeed listeners.
 - It makes massaging  persistant and scalable.
 - No need to track previous messages cursors thanks to changefeeds.
